@@ -591,6 +591,51 @@ h3 {
   font-size: 32px;
 }
 
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.status-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  transition: color 180ms ease;
+}
+
+.status-refresh > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 9px rgba(119, 237, 178, 0.5);
+}
+
+.status-refresh.refreshing > i,
+.live-label.refreshing > i {
+  animation: refresh-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.status-refresh.stale,
+.live-label.stale {
+  color: var(--red);
+}
+
+.status-refresh.stale > i,
+.live-label.stale > i {
+  background: var(--red);
+  box-shadow: 0 0 9px rgba(255, 143, 135, 0.45);
+}
+
+@keyframes refresh-pulse {
+  to { opacity: 0.3; transform: scale(0.7); }
+}
+
 .text-link,
 .back-link {
   color: var(--text-soft);
@@ -709,6 +754,16 @@ h3 {
 .camera-state.online {
   color: var(--green);
   background: var(--green-soft);
+}
+
+.camera-state.sleeping {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.camera-state.offline {
+  color: var(--red);
+  background: var(--red-soft);
 }
 
 .camera-stats {
@@ -1780,6 +1835,12 @@ pre {
 
   .section-heading h2 {
     font-size: 27px;
+  }
+
+  .section-actions {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+    gap: 7px;
   }
 
   .camera-card-head {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import secrets
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -98,42 +99,55 @@ def camera_view(
     statuses: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     device = devices.get(camera.serial, {})
+    associated = camera.mac in stations
+    state = "online" if associated else "sleeping" if device else "offline"
+    status = statuses.get(camera.serial, {})
     return {
         "camera": camera,
-        "online": bool(device) or camera.mac in stations,
-        "associated": camera.mac in stations,
-        "status": statuses.get(camera.serial, {}),
+        "online": state == "online",
+        "state": state,
+        "associated": associated,
+        "battery": status.get("BatteryLevel", status.get("BatPercent")),
+        "signal": status.get("WifiRSSI", stations.get(camera.mac, {}).get("signal")),
+        "status": status,
         "station": stations.get(camera.mac, {}),
     }
 
 
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
+def collect_camera_views() -> list[dict[str, Any]]:
     cameras = store.all()
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        health_future = executor.submit(system.health)
+    with ThreadPoolExecutor(max_workers=2) as executor:
         devices_future = executor.submit(system.arlo_devices)
         stations_future = executor.submit(system.stations)
-        health = health_future.result()
         device_list = devices_future.result()
         stations = stations_future.result()
     devices = {str(item.get("serial_number", "")): item for item in device_list}
-    online_serials = [serial for serial in cameras if serial in devices]
-    with ThreadPoolExecutor(max_workers=max(1, len(online_serials))) as executor:
+    reporting_serials = [serial for serial in cameras if serial in devices]
+    with ThreadPoolExecutor(max_workers=max(1, len(reporting_serials))) as executor:
         status_futures = {
             serial: executor.submit(system.arlo_status, serial)
-            for serial in online_serials
+            for serial in reporting_serials
         }
         statuses = {
             serial: future.result() for serial, future in status_futures.items()
         }
+    return [
+        camera_view(camera, devices, stations, statuses)
+        for camera in cameras.values()
+    ]
+
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        health_future = executor.submit(system.health)
+        cameras_future = executor.submit(collect_camera_views)
+        health = health_future.result()
+        cameras = cameras_future.result()
     context = {
         "request": request,
         "health": health,
-        "cameras": [
-            camera_view(camera, devices, stations, statuses)
-            for camera in cameras.values()
-        ],
+        "cameras": cameras,
         "advertised_host": system.advertised_host(),
         "mqtt_enabled": mqtt.enabled,
     }
@@ -143,6 +157,26 @@ def index(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
 @app.get("/api/health")
 def health(_: str = Depends(require_auth)) -> dict[str, Any]:
     return system.health()
+
+
+@app.get("/api/cameras/status")
+def cameras_status(_: str = Depends(require_auth)) -> dict[str, Any]:
+    views = collect_camera_views()
+    return {
+        "updated_at": time.time(),
+        "interval_seconds": 7,
+        "cameras": {
+            item["camera"].serial: {
+                "state": item["state"],
+                "online": item["online"],
+                "associated": item["associated"],
+                "battery": item["battery"],
+                "signal": item["signal"],
+                "status": item["status"],
+            }
+            for item in views
+        },
+    }
 
 
 @app.get("/pair", response_class=HTMLResponse)

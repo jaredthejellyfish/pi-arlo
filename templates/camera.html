@@ -10,9 +10,9 @@
     <a class="button primary" href="http://{{ host }}:8888/{{ camera.slug }}/" target="_blank" rel="noreferrer"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 5 8 5-8 5V5Z" fill="currentColor"/></svg>Open live view</a>
   </section>
 
-  <section class="detail-grid">
+  <section class="detail-grid" data-camera-detail="{{ camera.serial }}">
     <article class="panel detail-panel">
-      <div class="panel-heading"><div><p class="eyebrow">Network</p><h2>Connection</h2></div><span class="status-dot up"></span></div>
+      <div class="panel-heading"><div><p class="eyebrow">Network</p><h2>Connection</h2></div><span class="status-dot up" data-camera-connection></span></div>
       <dl class="detail-list">
         <div><dt>Camera MAC</dt><dd class="mono">{{ camera.mac }}</dd></div>
         <div><dt>Private address</dt><dd class="mono">{{ camera.ip }}</dd></div>
@@ -21,8 +21,8 @@
       </dl>
     </article>
     <article class="panel detail-panel status-panel">
-      <div class="panel-heading"><div><p class="eyebrow">Telemetry</p><h2>Current status</h2></div><span class="live-label"><i></i> Latest</span></div>
-      <dl class="detail-list status-list">
+      <div class="panel-heading"><div><p class="eyebrow">Telemetry</p><h2>Current status</h2></div><span class="live-label" data-refresh-indicator><i></i><span data-refresh-label>Updates every 7 sec</span></span></div>
+      <dl class="detail-list status-list" data-camera-status-list>
         {% for key, value in status.items() %}
           <div><dt>{{ key }}</dt><dd>{{ value }}</dd></div>
         {% else %}
