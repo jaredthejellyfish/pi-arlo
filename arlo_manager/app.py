@@ -77,17 +77,14 @@ async def webhook_payload(request: Request) -> dict[str, Any]:
 def recoverable_serials() -> set[str]:
     configured = store.all()
     leases = system.leases()
-    stations = system.stations()
     recoverable: set[str] = set()
     for device in system.arlo_devices():
         serial = str(device.get("serial_number", ""))
         ip = str(device.get("ip", ""))
         lease = leases.get(ip)
         current = configured.get(serial)
-        if (
-            lease
-            and lease.get("mac") in stations
-            and (current is None or current.ip != ip or current.mac != lease.get("mac"))
+        if lease and (
+            current is None or current.ip != ip or current.mac != lease.get("mac")
         ):
             recoverable.add(serial)
     return recoverable

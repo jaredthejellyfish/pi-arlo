@@ -1,10 +1,13 @@
 import asyncio
+import importlib
 import json
 from urllib.parse import urlencode
 
 from starlette.requests import Request
 
 from arlo_manager.app import webhook_payload
+
+app_module = importlib.import_module("arlo_manager.app")
 
 
 def request_with_body(body: bytes, content_type: str) -> Request:
@@ -49,3 +52,21 @@ def test_json_webhook_remains_supported():
     payload = asyncio.run(webhook_payload(request_with_body(body, "application/json")))
 
     assert payload == {"serial_number": "AA382772D686E", "status": {}}
+
+
+def test_recent_lease_recovers_camera_that_slept_after_pairing(monkeypatch):
+    class EmptyStore:
+        def all(self):
+            return {}
+
+    class SleepingCameraSystem:
+        def leases(self):
+            return {"172.14.1.94": {"mac": "fc:9c:98:3a:33:e7"}}
+
+        def arlo_devices(self):
+            return [{"serial_number": "AA382772D686E", "ip": "172.14.1.94"}]
+
+    monkeypatch.setattr(app_module, "store", EmptyStore())
+    monkeypatch.setattr(app_module, "system", SleepingCameraSystem())
+
+    assert app_module.recoverable_serials() == {"AA382772D686E"}
