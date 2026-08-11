@@ -186,6 +186,12 @@ chmod 0660 "$API_DATA_DIR/arlo.db"
 if [[ ! -e "$MEDIAMTX_DIR/mediamtx.yml" ]]; then
   install -m 0644 "$ROOT_DIR/config/mediamtx.yml" "$MEDIAMTX_DIR/mediamtx.yml"
 fi
+# MediaMTX 1.20 enables Media over QUIC by default and tries to persist an
+# automatically generated TLS keypair. This appliance does not use MoQ and the
+# service intentionally has a read-only filesystem, so explicitly disable it.
+if ! grep -Eq '^[[:space:]]*moq:' "$MEDIAMTX_DIR/mediamtx.yml"; then
+  printf '\nmoq: false\n' >>"$MEDIAMTX_DIR/mediamtx.yml"
+fi
 if ! getent passwd mediamtx >/dev/null; then
   useradd --system --home-dir "$MEDIAMTX_DIR" --shell /usr/sbin/nologin mediamtx
 fi
