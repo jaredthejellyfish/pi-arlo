@@ -4,18 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0a0d0c">
     <title>{% block title %}Arlo Base Station{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
     <script defer src="{{ url_for('static', path='/app.js') }}"></script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
     <header class="topbar">
-      <a class="brand" href="/">
-        <span class="brand-mark">A</span>
-        <span>Arlo Base Station</span>
-      </a>
-      <a class="button primary" href="/pair">+ Add camera</a>
+      <div class="topbar-inner">
+        <a class="brand" href="/" aria-label="Arlo Base Station dashboard">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M8 22.5 15.7 7l8.3 15.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M11.3 17.2h9.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy"><small>Local control</small><strong>Arlo Base Station</strong></span>
+        </a>
+        <nav class="topbar-actions" aria-label="Primary navigation">
+          <span class="local-badge"><i></i> Private system</span>
+          <a class="button primary compact" href="/pair">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Add camera
+          </a>
+        </nav>
+      </div>
     </header>
-    <main class="shell">{% block content %}{% endblock %}</main>
+    <main class="shell" id="main-content">{% block content %}{% endblock %}</main>
+    <footer class="site-footer"><span>Arlo Base Station</span><span>Runs locally on this Raspberry Pi</span></footer>
   </body>
 </html>

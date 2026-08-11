@@ -55,6 +55,7 @@ const startButton = $("#start-pairing");
 if (startButton) {
   startButton.addEventListener("click", async () => {
     startButton.disabled = true;
+    startButton.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Opening secure pairing…';
     $("#pair-error").classList.add("hidden");
     try {
       const result = await responseJson(await fetch("/api/pair/start", {method: "POST"}));
@@ -66,6 +67,7 @@ if (startButton) {
     } catch (error) {
       showError(error.message);
       startButton.disabled = false;
+      startButton.innerHTML = 'Try pairing again <span aria-hidden="true">→</span>';
     }
   });
 }
@@ -84,8 +86,8 @@ document.querySelectorAll(".copy-button").forEach((button) => {
   button.addEventListener("click", async () => {
     const source = document.getElementById(button.dataset.copy);
     await navigator.clipboard.writeText(source.innerText);
-    const prior = button.textContent;
-    button.textContent = "Copied";
-    setTimeout(() => { button.textContent = prior; }, 1400);
+    const prior = button.innerHTML;
+    button.innerHTML = '<span aria-hidden="true">✓</span> Copied';
+    setTimeout(() => { button.innerHTML = prior; }, 1400);
   });
 });

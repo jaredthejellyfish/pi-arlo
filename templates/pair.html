@@ -1,47 +1,66 @@
 {% extends "base.html" %}
 {% block title %}Pair a camera · Arlo Base Station{% endblock %}
 {% block content %}
+  <a class="back-link" href="/"><span aria-hidden="true">←</span> Dashboard</a>
   <section class="wizard" id="pairing-wizard">
     <div class="wizard-heading">
+      <div class="page-icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M7 11.5A4.5 4.5 0 0 1 11.5 7h9a4.5 4.5 0 0 1 4.5 4.5v9a4.5 4.5 0 0 1-4.5 4.5h-9A4.5 4.5 0 0 1 7 20.5v-9Z" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 4h8M26.5 8.5l1.8-1.8M26.5 23.5l1.8 1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
       <p class="eyebrow">Add camera</p>
-      <h1>Pair a new Arlo</h1>
-      <p>Keep the camera close to this Pi while it exchanges Wi-Fi credentials.</p>
+      <h1>Let’s get it connected.</h1>
+      <p>Keep the camera close to this base station while it receives the private Wi-Fi credentials.</p>
     </div>
-    <div class="steps">
-      <div class="step active" data-step="1"><span>1</span><strong>Ready</strong></div>
-      <div class="step" data-step="2"><span>2</span><strong>Discover</strong></div>
-      <div class="step" data-step="3"><span>3</span><strong>Name</strong></div>
+
+    <div class="steps" aria-label="Pairing progress">
+      <div class="step active" data-step="1"><span>1</span><div><small>Step one</small><strong>Prepare</strong></div></div>
+      <div class="step" data-step="2"><span>2</span><div><small>Step two</small><strong>Connect</strong></div></div>
+      <div class="step" data-step="3"><span>3</span><div><small>Step three</small><strong>Name</strong></div></div>
     </div>
 
     <section class="panel wizard-panel" id="pair-start">
-      <div class="instruction-number">1</div>
-      <div><h2>Put the camera near the base station</h2><p>Install its battery, then have the camera's Sync button ready. WPS stays open for two minutes.</p></div>
-      <button class="button primary wide" type="button" id="start-pairing">Start pairing</button>
+      <div class="instruction-art" aria-hidden="true">
+        <span class="camera-outline"><i></i></span>
+        <span class="signal-wave wave-one"></span><span class="signal-wave wave-two"></span>
+      </div>
+      <div class="instruction-copy">
+        <span class="step-chip">Before you start</span>
+        <h2>Wake the camera and find its Sync button</h2>
+        <p>Install a charged battery and place the camera within a few feet of the Pi. When prompted, press Sync once.</p>
+        <div class="tip"><strong>Good to know</strong><span>The secure pairing window remains open for two minutes.</span></div>
+      </div>
+      <button class="button primary wide" type="button" id="start-pairing">
+        Start pairing
+        <span aria-hidden="true">→</span>
+      </button>
     </section>
 
-    <section class="panel wizard-panel hidden" id="pair-progress">
-      <div class="spinner"></div>
-      <div><h2>Now press Sync on the camera</h2><p id="pair-message">Waiting for the camera to join…</p></div>
+    <section class="panel wizard-panel progress-panel hidden" id="pair-progress" aria-live="polite">
+      <div class="radar" aria-hidden="true"><span></span><i></i></div>
+      <div class="instruction-copy"><span class="step-chip active">Searching</span><h2>Press Sync on the camera</h2><p id="pair-message">The base station is watching for your camera now.</p></div>
       <div class="checklist">
-        <div id="check-wifi"><span>○</span> Wi-Fi client detected</div>
-        <div id="check-dhcp"><span>○</span> Address assigned</div>
-        <div id="check-api"><span>○</span> Arlo camera registered</div>
+        <div id="check-wifi"><span>1</span><div><strong>Camera detected</strong><small>Joining the private Wi-Fi</small></div><i></i></div>
+        <div id="check-dhcp"><span>2</span><div><strong>Address assigned</strong><small>Reserving a stable local address</small></div><i></i></div>
+        <div id="check-api"><span>3</span><div><strong>Camera registered</strong><small>Connecting to the local Arlo service</small></div><i></i></div>
       </div>
     </section>
 
-    <section class="panel wizard-panel hidden" id="pair-finish">
-      <div><p class="eyebrow">Camera found</p><h2 id="found-model">New Arlo camera</h2><p id="found-details" class="muted"></p></div>
+    <section class="panel wizard-panel finish-panel hidden" id="pair-finish">
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <div class="instruction-copy"><span class="step-chip complete">Camera found</span><h2 id="found-model">New Arlo camera</h2><p id="found-details" class="device-details"></p></div>
       <form method="post" action="/api/pair/finish" id="finish-form">
         <input type="hidden" name="serial" id="serial">
         <input type="hidden" name="hostname" id="hostname">
         <input type="hidden" name="mac" id="mac">
         <input type="hidden" name="ip" id="ip">
-        <label>Friendly name<input name="name" id="name" required maxlength="80" placeholder="Driveway"></label>
-        <label>Stream ID<input name="slug" id="slug" required pattern="[a-z0-9]+(?:_[a-z0-9]+)*" placeholder="driveway"></label>
-        <p class="muted">Finish Setup reserves the address, creates the on-demand stream, validates both configurations, and opens the stream before saving.</p>
-        <button class="button primary wide" type="submit">Finish setup</button>
+        <div class="field-grid">
+          <label><span>Friendly name</span><input name="name" id="name" required maxlength="80" placeholder="Driveway" autocomplete="off"><small>Shown throughout the manager</small></label>
+          <label><span>Stream ID</span><input name="slug" id="slug" required pattern="[a-z0-9]+(?:_[a-z0-9]+)*" placeholder="driveway" autocomplete="off"><small>Used in the RTSP address</small></label>
+        </div>
+        <p class="form-note">Finishing reserves the camera’s address, creates its on-demand stream, and validates the configuration before saving.</p>
+        <button class="button primary wide" type="submit">Finish setup <span aria-hidden="true">→</span></button>
       </form>
     </section>
-    <div class="error hidden" id="pair-error"></div>
+    <div class="error hidden" id="pair-error" role="alert"></div>
   </section>
 {% endblock %}
