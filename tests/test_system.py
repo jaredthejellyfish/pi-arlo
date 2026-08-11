@@ -24,3 +24,13 @@ def test_wps_timeout_is_accepted_when_hostapd_reports_active():
 
     assert result.ok is True
     assert any(command[-1] == "wps_get_status" for command, _ in system.commands)
+
+
+def test_hostapd_cli_uses_socket_directory_shared_with_hostapd():
+    system = SystemReader(Settings())
+
+    command = system.hostapd_cli()
+
+    assert "-p/run/hostapd" in command
+    assert "-s/run/hostapd" in command
+    assert command[-2:] == ["-i", "wlan0"]

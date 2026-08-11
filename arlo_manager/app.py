@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import secrets
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -94,13 +95,14 @@ def camera_view(
     camera: Camera,
     devices: dict[str, dict[str, Any]],
     stations: dict[str, dict[str, Any]],
+    statuses: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     device = devices.get(camera.serial, {})
     return {
         "camera": camera,
         "online": bool(device) or camera.mac in stations,
         "associated": camera.mac in stations,
-        "status": system.arlo_status(camera.serial) if device else {},
+        "status": statuses.get(camera.serial, {}),
         "station": stations.get(camera.mac, {}),
     }
 
@@ -108,14 +110,29 @@ def camera_view(
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
     cameras = store.all()
-    device_list = system.arlo_devices()
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        health_future = executor.submit(system.health)
+        devices_future = executor.submit(system.arlo_devices)
+        stations_future = executor.submit(system.stations)
+        health = health_future.result()
+        device_list = devices_future.result()
+        stations = stations_future.result()
     devices = {str(item.get("serial_number", "")): item for item in device_list}
-    stations = system.stations()
+    online_serials = [serial for serial in cameras if serial in devices]
+    with ThreadPoolExecutor(max_workers=max(1, len(online_serials))) as executor:
+        status_futures = {
+            serial: executor.submit(system.arlo_status, serial)
+            for serial in online_serials
+        }
+        statuses = {
+            serial: future.result() for serial, future in status_futures.items()
+        }
     context = {
         "request": request,
-        "health": system.health(),
+        "health": health,
         "cameras": [
-            camera_view(camera, devices, stations) for camera in cameras.values()
+            camera_view(camera, devices, stations, statuses)
+            for camera in cameras.values()
         ],
         "advertised_host": system.advertised_host(),
         "mqtt_enabled": mqtt.enabled,

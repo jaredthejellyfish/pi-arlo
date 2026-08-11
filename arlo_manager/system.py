@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import socket
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,7 +61,7 @@ class SystemReader:
 
     def wlan_info(self) -> dict[str, Any]:
         info = self.run(["iw", "dev", self.config.wifi_interface, "info"])
-        status = self.run(["hostapd_cli", "-i", self.config.wifi_interface, "status"])
+        status = self.run([*self.hostapd_cli(), "status"])
         address = self.run(
             ["ip", "-4", "-o", "addr", "show", "dev", self.config.wifi_interface]
         )
@@ -155,18 +156,45 @@ class SystemReader:
             return {}
 
     def health(self) -> dict[str, Any]:
-        services = {
-            name: self.service_active(name)
-            for name in ("arlo-wlan", "hostapd", "dnsmasq", "arlo-cam-api", "mediamtx")
-        }
+        service_names = (
+            "arlo-wlan",
+            "hostapd",
+            "dnsmasq",
+            "arlo-cam-api",
+            "mediamtx",
+        )
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            service_futures = {
+                name: executor.submit(self.service_active, name)
+                for name in service_names
+            }
+            wlan_future = executor.submit(self.wlan_info)
+            lan_future = executor.submit(self.lan_address)
+            services = {
+                name: future.result() for name, future in service_futures.items()
+            }
+            wlan = wlan_future.result()
+            lan_address = lan_future.result()
         return {
             "services": services,
-            "wlan": self.wlan_info(),
-            "lan_address": self.lan_address(),
+            "wlan": wlan,
+            "lan_address": lan_address,
         }
 
+    def hostapd_cli(self) -> list[str]:
+        # The manager runs with systemd's PrivateTmp enabled. Give hostapd_cli a
+        # shared client-socket directory so hostapd can send its reply back into
+        # the manager's mount namespace instead of waiting for the timeout.
+        return [
+            "hostapd_cli",
+            "-p/run/hostapd",
+            "-s/run/hostapd",
+            "-i",
+            self.config.wifi_interface,
+        ]
+
     def start_pairing(self) -> CommandResult:
-        base = ["hostapd_cli", "-i", self.config.wifi_interface]
+        base = self.hostapd_cli()
         self.run([*base, "wps_cancel"], timeout=5)
         result = self.run([*base, "wps_pbc"], timeout=8)
         if result.timed_out:
