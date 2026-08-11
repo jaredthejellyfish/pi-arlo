@@ -23,19 +23,23 @@ class PairingCoordinator:
         self._sessions: dict[str, PairingSession] = {}
         self._lock = threading.Lock()
 
-    def start(self) -> PairingSession:
+    def start(self, recover_serials: set[str] | None = None) -> PairingSession:
+        recover_serials = recover_serials or set()
         devices = self.system.arlo_devices()
         session = PairingSession(
             identifier=uuid.uuid4().hex,
             started_at=time.time(),
             baseline_serials={
-                str(device.get("serial_number", "")) for device in devices
+                str(device.get("serial_number", ""))
+                for device in devices
+                if str(device.get("serial_number", "")) not in recover_serials
             },
             baseline_stations=set(self.system.stations()),
         )
-        result = self.system.start_pairing()
-        if not result.ok or "FAIL" in result.output.upper():
-            raise RuntimeError(f"Could not start WPS pairing: {result.output}")
+        if not recover_serials:
+            result = self.system.start_pairing()
+            if not result.ok or "FAIL" in result.output.upper():
+                raise RuntimeError(f"Could not start WPS pairing: {result.output}")
         with self._lock:
             self._sessions[session.identifier] = session
         return session

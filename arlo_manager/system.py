@@ -16,6 +16,7 @@ from .settings import Settings
 class CommandResult:
     ok: bool
     output: str
+    timed_out: bool = False
 
 
 class SystemReader:
@@ -27,7 +28,9 @@ class SystemReader:
             result = subprocess.run(
                 args, text=True, capture_output=True, timeout=timeout, check=False
             )
-        except (OSError, subprocess.TimeoutExpired) as error:
+        except subprocess.TimeoutExpired as error:
+            return CommandResult(False, str(error), timed_out=True)
+        except OSError as error:
             return CommandResult(False, str(error))
         output = (result.stdout or result.stderr).strip()
         return CommandResult(result.returncode == 0, output)
@@ -163,8 +166,17 @@ class SystemReader:
         }
 
     def start_pairing(self) -> CommandResult:
-        self.run(["hostapd_cli", "-i", self.config.wifi_interface, "wps_cancel"])
-        return self.run(["hostapd_cli", "-i", self.config.wifi_interface, "wps_pbc"])
+        base = ["hostapd_cli", "-i", self.config.wifi_interface]
+        self.run([*base, "wps_cancel"], timeout=5)
+        result = self.run([*base, "wps_pbc"], timeout=8)
+        if result.timed_out:
+            wps_status = self.run([*base, "wps_get_status"], timeout=5)
+            if wps_status.ok and (
+                "PBC Status: Active" in wps_status.output
+                or "Last WPS result: Success" in wps_status.output
+            ):
+                return CommandResult(True, wps_status.output)
+        return result
 
     def test_stream(self, slug: str) -> CommandResult:
         return self.run(

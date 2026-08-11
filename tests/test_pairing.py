@@ -43,3 +43,15 @@ def test_known_database_camera_can_be_readded_when_it_associates_again():
     assert result["dhcp_detected"] is True
     assert result["registered"] is True
     assert result["camera"]["serial"] == "AAKNOWN1234"
+
+
+def test_interrupted_setup_recovers_registered_camera_without_restarting_wps():
+    system = PairingSystem()
+    coordinator = PairingCoordinator(system)
+
+    session = coordinator.start({"AAKNOWN1234"})
+    result = coordinator.status(session.identifier)
+
+    assert system.started is False
+    assert result["registered"] is True
+    assert result["camera"]["ip"] == "172.14.1.22"

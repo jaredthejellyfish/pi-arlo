@@ -11,7 +11,9 @@ from .settings import Settings
 
 SENSORS = {
     "BatteryLevel": ("Battery", "%", "battery", "measurement"),
+    "BatPercent": ("Battery", "%", "battery", "measurement"),
     "BatteryCharging": ("Charging", None, None, None),
+    "ChargingState": ("Charging", None, None, None),
     "WifiRSSI": ("Wi-Fi RSSI", "dBm", "signal_strength", "measurement"),
     "SignalStrength": ("Signal", None, "signal_strength", "measurement"),
     "Temperature": ("Temperature", "°C", "temperature", "measurement"),

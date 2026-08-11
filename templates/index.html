@@ -50,7 +50,8 @@
           <span class="pill {{ 'online' if item.online else 'offline' }}">{{ "Online" if item.online else "Sleeping / offline" }}</span>
         </div>
         <dl>
-          <div><dt>Battery</dt><dd>{{ item.status.get('BatteryLevel', '—') }}{% if item.status.get('BatteryLevel') is not none %}%{% endif %}</dd></div>
+          {% set battery = item.status.get('BatteryLevel', item.status.get('BatPercent')) %}
+          <div><dt>Battery</dt><dd>{{ battery if battery is not none else '—' }}{% if battery is not none %}%{% endif %}</dd></div>
           <div><dt>Signal</dt><dd>{{ item.status.get('WifiRSSI', item.station.get('signal', '—')) }}{% if item.status.get('WifiRSSI') or item.station.get('signal') %} dBm{% endif %}</dd></div>
           <div><dt>Arlo IP</dt><dd>{{ camera.ip }}</dd></div>
           <div><dt>Serial</dt><dd>{{ camera.serial }}</dd></div>

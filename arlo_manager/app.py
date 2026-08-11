@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import secrets
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,42 @@ def local_hook(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Webhook is local-only")
 
 
+async def webhook_payload(request: Request) -> dict[str, Any]:
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        value = await request.json()
+        return value if isinstance(value, dict) else {}
+
+    form = await request.form()
+    payload: dict[str, Any] = dict(form)
+    for key, value in tuple(payload.items()):
+        if isinstance(value, str) and value[:1] in {"{", "["}:
+            try:
+                payload[key] = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+    return payload
+
+
+def recoverable_serials() -> set[str]:
+    configured = store.all()
+    leases = system.leases()
+    stations = system.stations()
+    recoverable: set[str] = set()
+    for device in system.arlo_devices():
+        serial = str(device.get("serial_number", ""))
+        ip = str(device.get("ip", ""))
+        lease = leases.get(ip)
+        current = configured.get(serial)
+        if (
+            lease
+            and lease.get("mac") in stations
+            and (current is None or current.ip != ip or current.mac != lease.get("mac"))
+        ):
+            recoverable.add(serial)
+    return recoverable
+
+
 def camera_view(
     camera: Camera,
     devices: dict[str, dict[str, Any]],
@@ -102,7 +139,7 @@ def pair_page(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
 @app.post("/api/pair/start")
 def pair_start(_: str = Depends(require_auth)) -> dict[str, Any]:
     try:
-        session = pairing.start()
+        session = pairing.start(recoverable_serials())
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     return {"session": session.identifier, "expires_in": 180}
@@ -219,7 +256,7 @@ cameras:
 
 @app.post("/api/hooks/status")
 async def hook_status(request: Request, _: None = Depends(local_hook)) -> JSONResponse:
-    payload = await request.json()
+    payload = await webhook_payload(request)
     camera = store.get(str(payload.get("serial_number", "")))
     if camera and isinstance(payload.get("status"), dict):
         await asyncio.to_thread(mqtt.status, camera, payload["status"])
@@ -228,7 +265,7 @@ async def hook_status(request: Request, _: None = Depends(local_hook)) -> JSONRe
 
 @app.post("/api/hooks/motion")
 async def hook_motion(request: Request, _: None = Depends(local_hook)) -> JSONResponse:
-    payload = await request.json()
+    payload = await webhook_payload(request)
     serial = str(payload.get("serial_number", ""))
     camera = store.get(serial)
     if camera:
@@ -251,7 +288,7 @@ async def delayed_motion_off(camera: Camera) -> None:
 async def hook_motion_timeout(
     request: Request, _: None = Depends(local_hook)
 ) -> JSONResponse:
-    payload = await request.json()
+    payload = await webhook_payload(request)
     serial = str(payload.get("serial_number", ""))
     camera = store.get(serial)
     if camera:
