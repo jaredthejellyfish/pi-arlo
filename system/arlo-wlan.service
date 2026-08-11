@@ -1,0 +1,13 @@
+[Unit]
+Description=Configure the private Arlo Wi-Fi interface
+After=systemd-udev-settle.service NetworkManager.service
+Wants=systemd-udev-settle.service
+Before=hostapd.service dnsmasq.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/arlo-wlan-up
+
+[Install]
+WantedBy=multi-user.target

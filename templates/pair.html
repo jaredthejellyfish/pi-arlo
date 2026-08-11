@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Pair a camera · Arlo Base Station{% endblock %}
+{% block content %}
+  <section class="wizard" id="pairing-wizard">
+    <div class="wizard-heading">
+      <p class="eyebrow">Add camera</p>
+      <h1>Pair a new Arlo</h1>
+      <p>Keep the camera close to this Pi while it exchanges Wi-Fi credentials.</p>
+    </div>
+    <div class="steps">
+      <div class="step active" data-step="1"><span>1</span><strong>Ready</strong></div>
+      <div class="step" data-step="2"><span>2</span><strong>Discover</strong></div>
+      <div class="step" data-step="3"><span>3</span><strong>Name</strong></div>
+    </div>
+
+    <section class="panel wizard-panel" id="pair-start">
+      <div class="instruction-number">1</div>
+      <div><h2>Put the camera near the base station</h2><p>Install its battery, then have the camera's Sync button ready. WPS stays open for two minutes.</p></div>
+      <button class="button primary wide" type="button" id="start-pairing">Start pairing</button>
+    </section>
+
+    <section class="panel wizard-panel hidden" id="pair-progress">
+      <div class="spinner"></div>
+      <div><h2>Now press Sync on the camera</h2><p id="pair-message">Waiting for the camera to join…</p></div>
+      <div class="checklist">
+        <div id="check-wifi"><span>○</span> Wi-Fi client detected</div>
+        <div id="check-dhcp"><span>○</span> Address assigned</div>
+        <div id="check-api"><span>○</span> Arlo camera registered</div>
+      </div>
+    </section>
+
+    <section class="panel wizard-panel hidden" id="pair-finish">
+      <div><p class="eyebrow">Camera found</p><h2 id="found-model">New Arlo camera</h2><p id="found-details" class="muted"></p></div>
+      <form method="post" action="/api/pair/finish" id="finish-form">
+        <input type="hidden" name="serial" id="serial">
+        <input type="hidden" name="hostname" id="hostname">
+        <input type="hidden" name="mac" id="mac">
+        <input type="hidden" name="ip" id="ip">
+        <label>Friendly name<input name="name" id="name" required maxlength="80" placeholder="Driveway"></label>
+        <label>Stream ID<input name="slug" id="slug" required pattern="[a-z0-9]+(?:_[a-z0-9]+)*" placeholder="driveway"></label>
+        <p class="muted">Finish Setup reserves the address, creates the on-demand stream, validates both configurations, and opens the stream before saving.</p>
+        <button class="button primary wide" type="submit">Finish setup</button>
+      </form>
+    </section>
+    <div class="error hidden" id="pair-error"></div>
+  </section>
+{% endblock %}

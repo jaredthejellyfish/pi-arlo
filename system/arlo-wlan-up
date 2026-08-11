@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+i=0
+while [ ! -e /sys/class/net/wlan0 ]; do
+  i=$((i + 1))
+  [ "$i" -lt 30 ] || exit 1
+  sleep 1
+done
+
+/usr/sbin/ip link set wlan0 down
+/usr/sbin/ip addr flush dev wlan0
+/usr/sbin/ip addr add 172.14.1.1/24 dev wlan0
+/usr/sbin/ip link set wlan0 up

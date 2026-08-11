@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pi-arlo-manager"
+version = "1.0.0"
+description = "Local Arlo base station manager for Raspberry Pi"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.116.1",
+  "httpx==0.28.1",
+  "Jinja2==3.1.6",
+  "paho-mqtt==2.1.0",
+  "python-multipart==0.0.20",
+  "PyYAML==6.0.2",
+  "uvicorn==0.35.0",
+]
+
+[tool.setuptools]
+packages = ["arlo_manager"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+ignore = ["B008"]

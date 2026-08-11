@@ -1,0 +1,15 @@
+WifiCountryCode: "US"
+VideoAntiFlickerRate: 60
+VideoQualityDefault: "default"
+NotifyRegisteredAndStatusUpdate: true
+NotifyOnMotionAlert: true
+NotifyOnMotionTimeoutAlert: true
+NotifyOnAudioAlert: false
+NotifyOnButtonPressAlert: true
+MotionRecordingWebHookUrl: "http://127.0.0.1:8088/api/hooks/motion"
+MotionTimeoutWebHookUrl: "http://127.0.0.1:8088/api/hooks/motion-timeout"
+StatusUpdateWebHookUrl: "http://127.0.0.1:8088/api/hooks/status"
+RegistrationWebHookUrl: "http://127.0.0.1:8088/api/hooks/registration"
+AudioRecordingWebHookUrl: "http://127.0.0.1:8088/api/hooks/ignored"
+UserRecordingWebHookUrl: "http://127.0.0.1:8088/api/hooks/ignored"
+ButtonPressWebHookUrl: "http://127.0.0.1:8088/api/hooks/button"

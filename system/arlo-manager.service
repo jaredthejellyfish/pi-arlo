@@ -1,0 +1,29 @@
+[Unit]
+Description=Arlo Base Station Manager
+After=network.target arlo-cam-api.service mediamtx.service
+Wants=arlo-cam-api.service mediamtx.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/arlo-manager/environment
+Environment=PYTHONPATH=/opt/arlo-manager
+WorkingDirectory=/opt/arlo-manager
+ExecStart=/opt/arlo-manager/.venv/bin/uvicorn arlo_manager.app:app --host 0.0.0.0 --port 8088
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+ReadWritePaths=/opt/arlo-manager /opt/arlo-cam-api /opt/mediamtx /etc/dnsmasq.d /var/backups/arlo-manager
+
+[Install]
+WantedBy=multi-user.target

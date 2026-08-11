@@ -1,0 +1,17 @@
+logLevel: info
+api: true
+apiAddress: 127.0.0.1:9997
+
+paths:
+  garage:
+    source: rtsp://172.14.1.15/live
+    sourceOnDemand: true
+    sourceOnDemandStartTimeout: 15s
+    sourceOnDemandCloseAfter: 5s
+    rtspAnyPort: true
+  backyard:
+    source: rtsp://172.14.1.21/live
+    sourceOnDemand: true
+    sourceOnDemandStartTimeout: 15s
+    sourceOnDemandCloseAfter: 5s
+    rtspAnyPort: true

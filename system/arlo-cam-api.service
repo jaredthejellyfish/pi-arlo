@@ -1,0 +1,26 @@
+[Unit]
+Description=Local Arlo base-station API
+Requires=arlo-wlan.service
+After=arlo-wlan.service
+
+[Service]
+Type=simple
+User=arlo-api
+Group=arlo-api
+WorkingDirectory=/opt/arlo-cam-api
+Restart=on-failure
+RestartSec=5
+ExecStart=/opt/arlo-base-station/arlo-api-venv/bin/python /opt/arlo-base-station/src/arlo-cam-api/server.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/opt/arlo-cam-api
+
+[Install]
+WantedBy=multi-user.target

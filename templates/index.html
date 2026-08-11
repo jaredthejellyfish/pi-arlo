@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Local camera appliance</p>
+      <h1>Everything important, at a glance.</h1>
+      <p class="muted">Ethernet: {{ health.lan_address or "waiting for DHCP" }} · Stream host: {{ advertised_host }}</p>
+    </div>
+    <div class="overall {{ 'good' if health.services.values() | select | list | length == health.services | length else 'warn' }}">
+      <span class="dot"></span>
+      {{ "All systems normal" if health.services.values() | select | list | length == health.services | length else "Attention needed" }}
+    </div>
+  </section>
+
+  <section class="grid health-grid">
+    <article class="panel ap-panel">
+      <div class="panel-heading"><h2>Private access point</h2><span class="status {{ 'up' if health.wlan.enabled and health.wlan.ap and health.wlan.address_ok else 'down' }}"></span></div>
+      <div class="metric"><strong>{{ health.wlan.ssid }}</strong><span>SSID</span></div>
+      <div class="split-metrics">
+        <div class="metric"><strong>{{ health.wlan.channel }}</strong><span>Channel</span></div>
+        <div class="metric"><strong>172.14.1.1</strong><span>Gateway</span></div>
+      </div>
+    </article>
+    <article class="panel">
+      <div class="panel-heading"><h2>Services</h2></div>
+      <div class="service-list">
+        {% for name, active in health.services.items() %}
+          <div><span class="status {{ 'up' if active else 'down' }}"></span><span>{{ name }}</span><small>{{ "Running" if active else "Stopped" }}</small></div>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="panel integration-panel">
+      <div class="panel-heading"><h2>Automation</h2><span class="status {{ 'up' if mqtt_enabled else 'idle' }}"></span></div>
+      <p class="large-label">{{ "MQTT connected" if mqtt_enabled else "MQTT not configured" }}</p>
+      <p class="muted">Status discovery and motion-controlled Frigate processing {{ "are enabled" if mqtt_enabled else "become automatic when MQTT is configured" }}.</p>
+    </article>
+  </section>
+
+  <div class="section-heading">
+    <div><p class="eyebrow">Cameras</p><h2>{{ cameras | length }} configured</h2></div>
+    <a class="text-link" href="/pair">Pair another →</a>
+  </div>
+  <section class="grid camera-grid">
+    {% for item in cameras %}
+      {% set camera = item.camera %}
+      <article class="panel camera-card">
+        <div class="camera-top">
+          <div class="camera-icon">●</div>
+          <div><h3>{{ camera.name }}</h3><p>{{ camera.hostname }}</p></div>
+          <span class="pill {{ 'online' if item.online else 'offline' }}">{{ "Online" if item.online else "Sleeping / offline" }}</span>
+        </div>
+        <dl>
+          <div><dt>Battery</dt><dd>{{ item.status.get('BatteryLevel', '—') }}{% if item.status.get('BatteryLevel') is not none %}%{% endif %}</dd></div>
+          <div><dt>Signal</dt><dd>{{ item.status.get('WifiRSSI', item.station.get('signal', '—')) }}{% if item.status.get('WifiRSSI') or item.station.get('signal') %} dBm{% endif %}</dd></div>
+          <div><dt>Arlo IP</dt><dd>{{ camera.ip }}</dd></div>
+          <div><dt>Serial</dt><dd>{{ camera.serial }}</dd></div>
+        </dl>
+        <div class="stream-url">rtsp://{{ advertised_host }}:8554/{{ camera.slug }}</div>
+        <div class="actions">
+          <a class="button" href="http://{{ advertised_host }}:8888/{{ camera.slug }}/" target="_blank" rel="noreferrer">Live</a>
+          <a class="button ghost" href="/camera/{{ camera.serial }}">Details &amp; setup</a>
+        </div>
+      </article>
+    {% else %}
+      <article class="panel empty-state">
+        <div class="empty-icon">+</div><h3>No cameras yet</h3><p>Pair your first Arlo camera to finish the base station.</p>
+        <a class="button primary" href="/pair">Add camera</a>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}
