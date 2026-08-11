@@ -34,3 +34,100 @@ def test_hostapd_cli_uses_socket_directory_shared_with_hostapd():
     assert "-p/run/hostapd" in command
     assert "-s/run/hostapd" in command
     assert command[-2:] == ["-i", "wlan0"]
+
+
+def test_stream_active_uses_direct_register_message(monkeypatch):
+    requests = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"result": True}
+
+    def post(url, **kwargs):
+        requests.append((url, kwargs))
+        return Response()
+
+    monkeypatch.setattr("arlo_manager.system.httpx.post", post)
+    system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
+
+    assert system.set_camera_stream_active("CAMERA123") is True
+    assert requests == [
+        (
+            "http://arlo.test/device/CAMERA123/message",
+            {
+                "json": {
+                    "Type": "registerSet",
+                    "SetValues": {"UserStreamActive": 0},
+                },
+                "timeout": 6,
+            },
+        )
+    ]
+
+
+class WakeSystem(SystemReader):
+    def __init__(self, stations, stream_ok=True):
+        super().__init__(Settings())
+        self.station_results = iter(stations)
+        self.last_stations = {}
+        self.stream_ok = stream_ok
+        self.actions = []
+
+    def stations(self):
+        try:
+            self.last_stations = next(self.station_results)
+        except StopIteration:
+            pass
+        return self.last_stations
+
+    def request_camera_status(self, serial):
+        self.actions.append(("status", serial))
+        return True
+
+    def set_camera_stream_active(self, serial, active=True):
+        self.actions.append(("stream-active", serial, active))
+        return True
+
+    def test_stream(self, slug):
+        self.actions.append(("stream-test", slug))
+        return CommandResult(self.stream_ok, "")
+
+
+def test_wake_camera_waits_for_association_then_validates_stream(monkeypatch):
+    monkeypatch.setattr("arlo_manager.system.time.sleep", lambda _: None)
+    times = iter([0, 0, 1, 2])
+    monkeypatch.setattr("arlo_manager.system.time.monotonic", lambda: next(times))
+    system = WakeSystem([{}, {"aa:bb:cc:dd:ee:ff": {}}])
+
+    result = system.wake_camera(
+        "CAMERA123", "AA:BB:CC:DD:EE:FF", "garage", association_timeout=5
+    )
+
+    assert result.ready is True
+    assert result.associated is True
+    assert system.actions == [
+        ("status", "CAMERA123"),
+        ("stream-active", "CAMERA123", True),
+        ("stream-test", "garage"),
+    ]
+
+
+def test_wake_camera_returns_recovery_message_when_radio_stays_offline(
+    monkeypatch,
+):
+    monkeypatch.setattr("arlo_manager.system.time.sleep", lambda _: None)
+    times = iter([0, 0, 2])
+    monkeypatch.setattr("arlo_manager.system.time.monotonic", lambda: next(times))
+    system = WakeSystem([{}, {}])
+
+    result = system.wake_camera(
+        "CAMERA123", "aa:bb:cc:dd:ee:ff", "garage", association_timeout=1
+    )
+
+    assert result.ready is False
+    assert result.associated is False
+    assert "reseat the battery once" in result.message
+    assert system.actions == []

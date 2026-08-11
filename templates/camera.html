@@ -7,7 +7,10 @@
       <span class="camera-glyph large" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M7 10.5c0-2 1.6-3.5 3.5-3.5h7c2 0 3.5 1.6 3.5 3.5v7c0 2-1.6 3.5-3.5 3.5h-7A3.5 3.5 0 0 1 7 17.5v-7Z" stroke="currentColor" stroke-width="1.8"/><circle cx="14" cy="14" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M11 4.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
       <div><p class="eyebrow">Camera details</p><h1>{{ camera.name }}</h1><p>{{ camera.hostname }} <span>·</span> {{ camera.serial }}</p></div>
     </div>
-    <a class="button primary" href="http://{{ host }}:8888/{{ camera.slug }}/" target="_blank" rel="noreferrer"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 5 8 5-8 5V5Z" fill="currentColor"/></svg>Open live view</a>
+    <div class="wake-action">
+      <button class="button primary" type="button" data-wake-camera="{{ camera.serial }}" data-live-url="http://{{ host }}:8888/{{ camera.slug }}/"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 5 8 5-8 5V5Z" fill="currentColor"/></svg>Wake &amp; view</button>
+      <p class="wake-result hidden" data-wake-result role="status" aria-live="polite"></p>
+    </div>
   </section>
 
   <section class="detail-grid" data-camera-detail="{{ camera.serial }}">

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import socket
 import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
@@ -18,6 +19,13 @@ class CommandResult:
     ok: bool
     output: str
     timed_out: bool = False
+
+
+@dataclass(frozen=True)
+class WakeResult:
+    ready: bool
+    associated: bool
+    message: str
 
 
 class SystemReader:
@@ -143,6 +151,70 @@ class SystemReader:
             return bool(response.json().get("result"))
         except (httpx.HTTPError, ValueError, AttributeError):
             return False
+
+    def request_camera_status(self, serial: str) -> bool:
+        try:
+            response = httpx.post(
+                f"{self.config.arlo_api_url}/device/{serial}/statusrequest",
+                timeout=6,
+            )
+            response.raise_for_status()
+            return bool(response.json().get("result"))
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return False
+
+    def set_camera_stream_active(self, serial: str, active: bool = True) -> bool:
+        # arlo-cam-api's userstreamactive endpoint is currently a no-op. Send
+        # the register message directly instead. Arlo uses 0 for active and 1
+        # for disabled, which is the opposite of a normal boolean flag.
+        try:
+            response = httpx.post(
+                f"{self.config.arlo_api_url}/device/{serial}/message",
+                json={
+                    "Type": "registerSet",
+                    "SetValues": {"UserStreamActive": 0 if active else 1},
+                },
+                timeout=6,
+            )
+            response.raise_for_status()
+            return bool(response.json().get("result"))
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return False
+
+    def wake_camera(
+        self,
+        serial: str,
+        mac: str,
+        slug: str,
+        association_timeout: int = 15,
+    ) -> WakeResult:
+        deadline = time.monotonic() + association_timeout
+        associated = mac.lower() in self.stations()
+        while not associated and time.monotonic() < deadline:
+            time.sleep(1)
+            associated = mac.lower() in self.stations()
+
+        if not associated:
+            return WakeResult(
+                False,
+                False,
+                "The camera did not reconnect to its private Wi-Fi. Trigger motion "
+                "in front of it and try again. If it stays asleep, reseat the battery once.",
+            )
+
+        # A status request is the lightweight wake-up used by Arlo clients.
+        # UserStreamActive then tells the camera to keep its RTSP service ready.
+        self.request_camera_status(serial)
+        self.set_camera_stream_active(serial, True)
+        stream = self.test_stream(slug)
+        if stream.ok:
+            return WakeResult(True, True, "Camera is awake and the stream is ready.")
+        return WakeResult(
+            False,
+            True,
+            "The camera reconnected, but its video stream did not start. Wait a few "
+            "seconds and try again. If this repeats, reseat the battery once.",
+        )
 
     def mediamtx_paths(self) -> dict[str, Any]:
         try:

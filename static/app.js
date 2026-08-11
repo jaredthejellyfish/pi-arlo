@@ -14,7 +14,7 @@ function showError(message) {
 async function responseJson(response) {
   let body = {};
   try { body = await response.json(); } catch (_) { /* no body */ }
-  if (!response.ok) throw new Error(body.detail || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(body.detail || body.message || `Request failed (${response.status})`);
   return body;
 }
 
@@ -89,6 +89,38 @@ document.querySelectorAll(".copy-button").forEach((button) => {
     const prior = button.innerHTML;
     button.innerHTML = '<span aria-hidden="true">✓</span> Copied';
     setTimeout(() => { button.innerHTML = prior; }, 1400);
+  });
+});
+
+document.querySelectorAll("[data-wake-camera]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const resultBox = button.closest(".camera-card, .wake-action")?.querySelector("[data-wake-result]");
+    const prior = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Waking camera…';
+    if (resultBox) {
+      resultBox.classList.add("hidden");
+      resultBox.classList.remove("success", "error");
+    }
+    try {
+      const wakeUrl = new URL(`/api/camera/${encodeURIComponent(button.dataset.wakeCamera)}/wake`, window.location.origin);
+      const result = await responseJson(await fetch(wakeUrl, {method: "POST"}));
+      if (resultBox) {
+        resultBox.textContent = result.message;
+        resultBox.classList.add("success");
+        resultBox.classList.remove("hidden");
+      }
+      window.location.assign(result.live_url || button.dataset.liveUrl);
+    } catch (error) {
+      if (resultBox) {
+        resultBox.textContent = error.message;
+        resultBox.classList.add("error");
+        resultBox.classList.remove("hidden");
+      }
+      button.disabled = false;
+      button.innerHTML = prior;
+      refreshCameraStatuses();
+    }
   });
 });
 

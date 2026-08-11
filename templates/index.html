@@ -91,11 +91,12 @@
             <div><span>Private IP</span><strong class="mono">{{ camera.ip }}</strong></div>
           </div>
           <div class="stream-row"><span>RTSP</span><code>rtsp://{{ advertised_host }}:8554/{{ camera.slug }}</code></div>
+          <p class="wake-result hidden" data-wake-result role="status" aria-live="polite"></p>
           <div class="actions">
-            <a class="button primary" href="http://{{ advertised_host }}:8888/{{ camera.slug }}/" target="_blank" rel="noreferrer">
+            <button class="button primary" type="button" data-wake-camera="{{ camera.serial }}" data-live-url="http://{{ advertised_host }}:8888/{{ camera.slug }}/">
               <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 5 8 5-8 5V5Z" fill="currentColor"/></svg>
-              Live view
-            </a>
+              Wake &amp; view
+            </button>
             <a class="button ghost" href="/camera/{{ camera.serial }}">Manage</a>
           </div>
         </article>

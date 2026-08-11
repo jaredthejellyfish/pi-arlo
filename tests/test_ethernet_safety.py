@@ -24,3 +24,12 @@ def test_only_wlan0_is_excluded_from_networkmanager():
     installer = (ROOT / "install.sh").read_text()
     assert "unmanaged-devices=interface-name:wlan0" in installer
     assert "unmanaged-devices=interface-name:eth0" not in installer
+
+
+def test_hostapd_retains_sleeping_battery_cameras():
+    installer = (ROOT / "install.sh").read_text()
+
+    assert "ap_max_inactivity=604800" in installer
+    assert "disassoc_low_ack=0" in installer
+    assert "bss_max_idle=0" in installer
+    assert "skip_inactivity_poll=1" not in installer

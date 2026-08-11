@@ -179,6 +179,21 @@ def cameras_status(_: str = Depends(require_auth)) -> dict[str, Any]:
     }
 
 
+@app.post("/api/camera/{serial}/wake")
+def camera_wake(serial: str, _: str = Depends(require_auth)) -> JSONResponse:
+    camera = store.get(serial)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    result = system.wake_camera(camera.serial, camera.mac, camera.slug)
+    payload = {
+        "ready": result.ready,
+        "associated": result.associated,
+        "message": result.message,
+        "live_url": f"http://{system.advertised_host()}:8888/{camera.slug}/",
+    }
+    return JSONResponse(payload, status_code=200 if result.ready else 503)
+
+
 @app.get("/pair", response_class=HTMLResponse)
 def pair_page(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
     return templates.TemplateResponse(request, "pair.html", {"suggested_slug": ""})
