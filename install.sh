@@ -167,7 +167,7 @@ media_base="https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX
 media_archive="mediamtx_v${MEDIAMTX_VERSION}_linux_${mediamtx_arch}.tar.gz"
 curl -fL --retry 3 -o "$media_tmp/$media_archive" "$media_base/$media_archive"
 curl -fL --retry 3 -o "$media_tmp/checksums.sha256" "$media_base/checksums.sha256"
-(cd "$media_tmp" && grep "  $media_archive\$" checksums.sha256 | sha256sum --check --strict)
+"$ROOT_DIR/scripts/verify-checksum.sh" "$media_tmp/checksums.sha256" "$media_tmp/$media_archive"
 tar -xzf "$media_tmp/$media_archive" -C "$media_tmp" mediamtx
 install -m 0755 "$media_tmp/mediamtx" /usr/local/bin/mediamtx
 
