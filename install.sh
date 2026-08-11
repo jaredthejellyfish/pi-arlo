@@ -100,7 +100,6 @@ ieee80211n=1
 wmm_enabled=1
 ap_max_inactivity=604800
 disassoc_low_ack=0
-bss_max_idle=0
 auth_algs=1
 wpa=2
 wpa_key_mgmt=WPA-PSK

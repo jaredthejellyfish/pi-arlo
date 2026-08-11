@@ -31,5 +31,4 @@ def test_hostapd_retains_sleeping_battery_cameras():
 
     assert "ap_max_inactivity=604800" in installer
     assert "disassoc_low_ack=0" in installer
-    assert "bss_max_idle=0" in installer
     assert "skip_inactivity_poll=1" not in installer
