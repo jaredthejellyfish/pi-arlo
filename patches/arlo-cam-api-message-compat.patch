@@ -1,0 +1,18 @@
+diff --git a/server.py b/server.py
+index e0b66ed..2cb2773 100644
+--- a/server.py
++++ b/server.py
+@@ -98,8 +98,11 @@ class ConnectionThread(threading.Thread):
+-                        spotlight_state = msg.get("SpotlightState", {})
++                        spotlight_state = (
++                            msg['SpotlightState'] if 'SpotlightState' in msg else {}
++                        )
+                         if device is not None and isinstance(spotlight_state, dict):
+                             if device.status is None:
+                                 device.status = Message({})
+-                            device.status.update(spotlight_state)
++                            for key, value in spotlight_state.items():
++                                device.status[key] = value
+                             DeviceDB.persist(device)
+                             if NOTIFY_REGISTERD_AND_STATUS_UPDATE:
+                                 webhook_manager.status_received(

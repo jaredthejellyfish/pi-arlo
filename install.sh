@@ -152,13 +152,23 @@ if [[ ! -d "$INSTALL_ROOT/src/arlo-cam-api/.git" ]]; then
 fi
 git -C "$INSTALL_ROOT/src/arlo-cam-api" fetch --quiet origin
 git -C "$INSTALL_ROOT/src/arlo-cam-api" checkout --quiet --detach "$ARLO_API_COMMIT"
-arlo_spotlight_patch="$ROOT_DIR/patches/arlo-cam-api-spotlight-state.patch"
-if git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --reverse --check "$arlo_spotlight_patch" 2>/dev/null; then
-  : # Already applied by an earlier install.
-else
-  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --check "$arlo_spotlight_patch"
-  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply "$arlo_spotlight_patch"
-fi
+arlo_api_patches=(
+  "$ROOT_DIR/patches/arlo-cam-api-spotlight-state.patch"
+  "$ROOT_DIR/patches/arlo-cam-api-message-compat.patch"
+)
+# Normalize a previous install before applying the ordered patch set. Removing
+# in reverse order handles both the old single-patch install and the current
+# two-patch version without discarding any unrelated files in the clone.
+for ((index=${#arlo_api_patches[@]} - 1; index >= 0; index--)); do
+  arlo_api_patch="${arlo_api_patches[$index]}"
+  if git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --reverse --check "$arlo_api_patch" 2>/dev/null; then
+    git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --reverse "$arlo_api_patch"
+  fi
+done
+for arlo_api_patch in "${arlo_api_patches[@]}"; do
+  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --check "$arlo_api_patch"
+  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply "$arlo_api_patch"
+done
 python3 -m venv "$INSTALL_ROOT/arlo-api-venv"
 "$INSTALL_ROOT/arlo-api-venv/bin/pip" install --disable-pip-version-check --quiet --upgrade pip
 "$INSTALL_ROOT/arlo-api-venv/bin/pip" install --disable-pip-version-check --quiet -r "$INSTALL_ROOT/src/arlo-cam-api/requirements.txt"

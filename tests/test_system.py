@@ -70,6 +70,7 @@ def test_stream_active_uses_direct_register_message(monkeypatch):
 
 def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
     requests = []
+    actions = []
 
     class Response:
         def raise_for_status(self):
@@ -80,17 +81,24 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
 
     monkeypatch.setattr(
         "arlo_manager.system.httpx.post",
-        lambda url, **kwargs: requests.append((url, kwargs)) or Response(),
+        lambda url, **kwargs: (
+            actions.append("command"), requests.append((url, kwargs)), Response()
+        )[-1],
     )
     monkeypatch.setattr(
-        SystemReader, "request_camera_status", lambda self, serial: True
+        SystemReader,
+        "request_camera_status",
+        lambda self, serial: actions.append("status") or True,
     )
     resets = []
     monkeypatch.setattr(
         SystemReader,
         "reset_camera_stream",
-        lambda self, ip, slug: resets.append((ip, slug)) or True,
+        lambda self, ip, slug: (
+            actions.append("reset"), resets.append((ip, slug)), True
+        )[-1],
     )
+    monkeypatch.setattr("arlo_manager.system.time.sleep", lambda _: None)
     system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
 
     assert system.set_camera_floodlight(
@@ -113,10 +121,12 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
         )
     ]
     assert resets == [("172.14.1.22", "side_yard")]
+    assert actions == ["status", "reset", "command", "status"]
 
 
 def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):
     requests = []
+    actions = []
 
     class Response:
         def raise_for_status(self):
@@ -127,16 +137,22 @@ def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):
 
     monkeypatch.setattr(
         "arlo_manager.system.httpx.post",
-        lambda url, **kwargs: requests.append((url, kwargs)) or Response(),
+        lambda url, **kwargs: (
+            actions.append("command"), requests.append((url, kwargs)), Response()
+        )[-1],
     )
     monkeypatch.setattr(
-        SystemReader, "request_camera_status", lambda self, serial: True
+        SystemReader,
+        "request_camera_status",
+        lambda self, serial: actions.append("status") or True,
     )
     resets = []
     monkeypatch.setattr(
         SystemReader,
         "reset_camera_stream",
-        lambda self, ip, slug: resets.append((ip, slug)) or True,
+        lambda self, ip, slug: (
+            actions.append("reset"), resets.append((ip, slug)), True
+        )[-1],
     )
     system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
 
@@ -152,6 +168,7 @@ def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):
         "PIRAction": "Stream",
     }
     assert resets == [("172.14.1.22", "side_yard")]
+    assert actions == ["status", "command", "reset", "status"]
 
 
 def test_stream_reset_temporarily_detaches_only_matching_camera(monkeypatch):

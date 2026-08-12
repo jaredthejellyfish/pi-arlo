@@ -191,6 +191,13 @@ class SystemReader:
     ) -> bool:
         brightness = max(1, min(100, brightness))
         self.request_camera_status(serial)
+        if enabled:
+            # A live spotlight is tied to the camera's current RTSP session.
+            # Rebuild that session first; tearing it down after switching the
+            # light on makes the camera immediately switch the light off again.
+            if not self.reset_camera_stream(ip, slug):
+                return False
+            time.sleep(2)
         try:
             response = httpx.post(
                 f"{self.config.arlo_api_url}/device/{serial}/registerset",
@@ -206,7 +213,9 @@ class SystemReader:
             )
             response.raise_for_status()
             accepted = bool(response.json().get("result"))
-            if not accepted or not self.reset_camera_stream(ip, slug):
+            if not accepted:
+                return False
+            if not enabled and not self.reset_camera_stream(ip, slug):
                 return False
 
             # The camera applies spotlight settings when its RTSP session is
