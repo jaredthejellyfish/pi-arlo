@@ -191,7 +191,10 @@ class SystemReader:
                 f"{self.config.arlo_api_url}/device/{serial}/registerset",
                 json={
                     "SpotlightEnabled": enabled,
-                    "SpotlightIntensityManual": brightness * 257,
+                    "SpotlightIntensityManual": brightness * 257 if enabled else 0,
+                    "SpotlightIntensityAlert": brightness * 257,
+                    "NightModeLightSourceAlert": 1 if enabled else 0,
+                    "PIRAction": "Stream+Spotlight" if enabled else "Stream",
                 },
                 timeout=6,
             )

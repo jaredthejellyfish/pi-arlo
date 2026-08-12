@@ -95,11 +95,43 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
                 "json": {
                     "SpotlightEnabled": True,
                     "SpotlightIntensityManual": 19275,
+                    "SpotlightIntensityAlert": 19275,
+                    "NightModeLightSourceAlert": 1,
+                    "PIRAction": "Stream+Spotlight",
                 },
                 "timeout": 6,
             },
         )
     ]
+
+
+def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):
+    requests = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"result": True}
+
+    monkeypatch.setattr(
+        "arlo_manager.system.httpx.post",
+        lambda url, **kwargs: requests.append((url, kwargs)) or Response(),
+    )
+    monkeypatch.setattr(
+        SystemReader, "request_camera_status", lambda self, serial: True
+    )
+    system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
+
+    assert system.set_camera_floodlight("CAMERA123", False, 75) is True
+    assert requests[0][1]["json"] == {
+        "SpotlightEnabled": False,
+        "SpotlightIntensityManual": 0,
+        "SpotlightIntensityAlert": 19275,
+        "NightModeLightSourceAlert": 0,
+        "PIRAction": "Stream",
+    }
 
 
 class WakeSystem(SystemReader):
