@@ -227,7 +227,11 @@ def camera_floodlight(
             detail="The camera is asleep. Wake it or trigger motion, then try again.",
         )
     if not system.set_camera_floodlight(
-        camera.serial, command.enabled, command.brightness
+        camera.serial,
+        command.enabled,
+        command.brightness,
+        camera.ip,
+        camera.slug,
     ):
         raise HTTPException(
             status_code=503,

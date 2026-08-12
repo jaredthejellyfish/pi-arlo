@@ -145,8 +145,8 @@ def test_floodlight_endpoint_sends_toggle_and_brightness(monkeypatch):
         def stations(self):
             return {item.mac: {}}
 
-        def set_camera_floodlight(self, serial, enabled, brightness):
-            calls.append((serial, enabled, brightness))
+        def set_camera_floodlight(self, serial, enabled, brightness, ip, slug):
+            calls.append((serial, enabled, brightness, ip, slug))
             return True
 
     monkeypatch.setattr(app_module, "store", Store())
@@ -158,7 +158,7 @@ def test_floodlight_endpoint_sends_toggle_and_brightness(monkeypatch):
         "admin",
     )
 
-    assert calls == [(item.serial, True, 75)]
+    assert calls == [(item.serial, True, 75, item.ip, item.slug)]
     assert payload["enabled"] is True
     assert payload["brightness"] == 75
 

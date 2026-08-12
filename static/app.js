@@ -177,7 +177,17 @@ if (floodlightControl) {
   slider.addEventListener("input", () => {
     output.textContent = `${slider.value}%`;
   });
-  slider.addEventListener("change", saveFloodlight);
+  slider.addEventListener("change", () => {
+    if (toggle.checked) {
+      saveFloodlight();
+      return;
+    }
+    localStorage.setItem(storageKey, slider.value);
+    floodlightControl.dataset.confirmedBrightness = slider.value;
+    resultBox.textContent = "Brightness saved for the next time you turn it on.";
+    resultBox.classList.remove("error");
+    resultBox.classList.add("success");
+  });
 }
 
 const CAMERA_REFRESH_MS = 7000;

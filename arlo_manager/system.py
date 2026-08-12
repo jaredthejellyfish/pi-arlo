@@ -182,7 +182,12 @@ class SystemReader:
             return False
 
     def set_camera_floodlight(
-        self, serial: str, enabled: bool, brightness: int
+        self,
+        serial: str,
+        enabled: bool,
+        brightness: int,
+        ip: str = "",
+        slug: str = "",
     ) -> bool:
         brightness = max(1, min(100, brightness))
         self.request_camera_status(serial)
@@ -194,14 +199,53 @@ class SystemReader:
                     "SpotlightIntensityManual": brightness * 257 if enabled else 0,
                     "SpotlightIntensityAlert": brightness * 257,
                     "NightModeLightSourceAlert": 1 if enabled else 0,
+                    "NightVisionMode": enabled,
                     "PIRAction": "Stream+Spotlight" if enabled else "Stream",
                 },
                 timeout=6,
             )
             response.raise_for_status()
-            return bool(response.json().get("result"))
+            accepted = bool(response.json().get("result"))
+            return accepted and (
+                enabled or self.reset_camera_stream(ip, slug)
+            )
         except (httpx.HTTPError, ValueError, AttributeError):
             return False
+
+    def reset_camera_stream(self, ip: str, slug: str) -> bool:
+        if not ip or not slug:
+            return False
+
+        path_url = f"{self.config.mediamtx_api_url}/v3/config/paths/patch/{slug}"
+        stopped = False
+        restored = False
+        try:
+            response = httpx.patch(
+                path_url,
+                json={"source": "publisher", "sourceOnDemand": False},
+                timeout=4,
+            )
+            response.raise_for_status()
+            stopped = True
+            time.sleep(3)
+        except httpx.HTTPError:
+            return False
+        finally:
+            if stopped:
+                try:
+                    restore = httpx.patch(
+                        path_url,
+                        json={
+                            "source": f"rtsp://{ip}/live",
+                            "sourceOnDemand": True,
+                        },
+                        timeout=4,
+                    )
+                    restore.raise_for_status()
+                    restored = True
+                except httpx.HTTPError:
+                    pass
+        return restored
 
     def wake_camera(
         self,

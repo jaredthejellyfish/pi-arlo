@@ -87,7 +87,9 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
     )
     system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
 
-    assert system.set_camera_floodlight("CAMERA123", True, 75) is True
+    assert system.set_camera_floodlight(
+        "CAMERA123", True, 75, "172.14.1.22", "side_yard"
+    ) is True
     assert requests == [
         (
             "http://arlo.test/device/CAMERA123/registerset",
@@ -97,6 +99,7 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
                     "SpotlightIntensityManual": 19275,
                     "SpotlightIntensityAlert": 19275,
                     "NightModeLightSourceAlert": 1,
+                    "NightVisionMode": True,
                     "PIRAction": "Stream+Spotlight",
                 },
                 "timeout": 6,
@@ -122,16 +125,61 @@ def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):
     monkeypatch.setattr(
         SystemReader, "request_camera_status", lambda self, serial: True
     )
+    resets = []
+    monkeypatch.setattr(
+        SystemReader,
+        "reset_camera_stream",
+        lambda self, ip, slug: resets.append((ip, slug)) or True,
+    )
     system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
 
-    assert system.set_camera_floodlight("CAMERA123", False, 75) is True
+    assert system.set_camera_floodlight(
+        "CAMERA123", False, 75, "172.14.1.22", "side_yard"
+    ) is True
     assert requests[0][1]["json"] == {
         "SpotlightEnabled": False,
         "SpotlightIntensityManual": 0,
         "SpotlightIntensityAlert": 19275,
         "NightModeLightSourceAlert": 0,
+        "NightVisionMode": False,
         "PIRAction": "Stream",
     }
+    assert resets == [("172.14.1.22", "side_yard")]
+
+
+def test_stream_reset_temporarily_detaches_only_matching_camera(monkeypatch):
+    patches = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(
+        "arlo_manager.system.httpx.patch",
+        lambda url, **kwargs: patches.append((url, kwargs)) or Response(),
+    )
+    monkeypatch.setattr("arlo_manager.system.time.sleep", lambda _: None)
+    system = SystemReader(Settings(mediamtx_api_url="http://media.test"))
+    assert system.reset_camera_stream("172.14.1.22", "side_yard") is True
+    assert patches == [
+        (
+            "http://media.test/v3/config/paths/patch/side_yard",
+            {
+                "json": {"source": "publisher", "sourceOnDemand": False},
+                "timeout": 4,
+            },
+        ),
+        (
+            "http://media.test/v3/config/paths/patch/side_yard",
+            {
+                "json": {
+                    "source": "rtsp://172.14.1.22/live",
+                    "sourceOnDemand": True,
+                },
+                "timeout": 4,
+            },
+        ),
+    ]
 
 
 class WakeSystem(SystemReader):
