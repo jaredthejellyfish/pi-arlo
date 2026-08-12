@@ -85,6 +85,12 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
     monkeypatch.setattr(
         SystemReader, "request_camera_status", lambda self, serial: True
     )
+    resets = []
+    monkeypatch.setattr(
+        SystemReader,
+        "reset_camera_stream",
+        lambda self, ip, slug: resets.append((ip, slug)) or True,
+    )
     system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
 
     assert system.set_camera_floodlight(
@@ -106,6 +112,7 @@ def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
             },
         )
     ]
+    assert resets == [("172.14.1.22", "side_yard")]
 
 
 def test_floodlight_off_zeros_output_and_disables_motion_retrigger(monkeypatch):

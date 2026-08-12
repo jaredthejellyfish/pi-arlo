@@ -152,6 +152,13 @@ if [[ ! -d "$INSTALL_ROOT/src/arlo-cam-api/.git" ]]; then
 fi
 git -C "$INSTALL_ROOT/src/arlo-cam-api" fetch --quiet origin
 git -C "$INSTALL_ROOT/src/arlo-cam-api" checkout --quiet --detach "$ARLO_API_COMMIT"
+arlo_spotlight_patch="$ROOT_DIR/patches/arlo-cam-api-spotlight-state.patch"
+if git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --reverse --check "$arlo_spotlight_patch" 2>/dev/null; then
+  : # Already applied by an earlier install.
+else
+  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply --check "$arlo_spotlight_patch"
+  git -C "$INSTALL_ROOT/src/arlo-cam-api" apply "$arlo_spotlight_patch"
+fi
 python3 -m venv "$INSTALL_ROOT/arlo-api-venv"
 "$INSTALL_ROOT/arlo-api-venv/bin/pip" install --disable-pip-version-check --quiet --upgrade pip
 "$INSTALL_ROOT/arlo-api-venv/bin/pip" install --disable-pip-version-check --quiet -r "$INSTALL_ROOT/src/arlo-cam-api/requirements.txt"

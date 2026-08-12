@@ -206,9 +206,14 @@ class SystemReader:
             )
             response.raise_for_status()
             accepted = bool(response.json().get("result"))
-            return accepted and (
-                enabled or self.reset_camera_stream(ip, slug)
-            )
+            if not accepted or not self.reset_camera_stream(ip, slug):
+                return False
+
+            # The camera applies spotlight settings when its RTSP session is
+            # rebuilt. Ask for a fresh report after reconnecting so the UI is
+            # not left showing the status cached before this command.
+            self.request_camera_status(serial)
+            return True
         except (httpx.HTTPError, ValueError, AttributeError):
             return False
 

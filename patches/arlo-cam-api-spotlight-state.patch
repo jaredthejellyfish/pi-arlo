@@ -1,0 +1,23 @@
+diff --git a/server.py b/server.py
+index 9a9995c..e0b66ed 100644
+--- a/server.py
++++ b/server.py
+@@ -91,6 +91,18 @@ class ConnectionThread(threading.Thread):
+                             webhook_manager.button_pressed(
+                                 device.ip, device.friendly_name, device.hostname, device.serial_number,
+                                 msg['ButtonPress']['Triggered'])
++                    elif alert_type == "spotlightAlert":
++                        spotlight_state = msg.get("SpotlightState", {})
++                        if device is not None and isinstance(spotlight_state, dict):
++                            if device.status is None:
++                                device.status = Message({})
++                            device.status.update(spotlight_state)
++                            DeviceDB.persist(device)
++                            if NOTIFY_REGISTERD_AND_STATUS_UPDATE:
++                                webhook_manager.status_received(
++                                    device.ip, device.friendly_name, device.hostname,
++                                    device.serial_number, device.status
++                                )
+                     elif alert_type == "motionTimeoutAlert":
+                         if NOTIFY_ON_MOTION_TIMEOUT_ALERT:
+                             webhook_manager.motion_timeout(
