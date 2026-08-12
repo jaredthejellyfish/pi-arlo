@@ -68,6 +68,40 @@ def test_stream_active_uses_direct_register_message(monkeypatch):
     ]
 
 
+def test_floodlight_maps_percent_to_camera_intensity(monkeypatch):
+    requests = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"result": True}
+
+    monkeypatch.setattr(
+        "arlo_manager.system.httpx.post",
+        lambda url, **kwargs: requests.append((url, kwargs)) or Response(),
+    )
+    monkeypatch.setattr(
+        SystemReader, "request_camera_status", lambda self, serial: True
+    )
+    system = SystemReader(Settings(arlo_api_url="http://arlo.test"))
+
+    assert system.set_camera_floodlight("CAMERA123", True, 75) is True
+    assert requests == [
+        (
+            "http://arlo.test/device/CAMERA123/registerset",
+            {
+                "json": {
+                    "SpotlightEnabled": True,
+                    "SpotlightIntensityManual": 19275,
+                },
+                "timeout": 6,
+            },
+        )
+    ]
+
+
 class WakeSystem(SystemReader):
     def __init__(self, stations, stream_ok=True):
         super().__init__(Settings())

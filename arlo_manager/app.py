@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 
 from .configuration import ConfigurationError, ConfigurationManager
 from .models import Camera
@@ -33,6 +34,11 @@ configuration = ConfigurationManager(settings, store, system)
 pairing = PairingCoordinator(system)
 mqtt = MqttBridge(settings)
 motion_tasks: dict[str, asyncio.Task[None]] = {}
+
+
+class FloodlightCommand(BaseModel):
+    enabled: bool
+    brightness: int = Field(ge=1, le=100)
 
 
 def require_auth(credentials: HTTPBasicCredentials | None = Depends(security)) -> str:
@@ -137,6 +143,18 @@ def collect_camera_views() -> list[dict[str, Any]]:
     ]
 
 
+def floodlight_view(status_report: dict[str, Any]) -> dict[str, Any]:
+    raw_brightness = status_report.get("SpotlightIntensityManual")
+    try:
+        brightness = round(float(raw_brightness) / 257)
+    except (TypeError, ValueError):
+        brightness = 50
+    return {
+        "enabled": bool(status_report.get("SpotlightEnabled", False)),
+        "brightness": max(1, min(100, brightness)),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, _: str = Depends(require_auth)) -> HTMLResponse:
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -192,6 +210,34 @@ def camera_wake(serial: str, _: str = Depends(require_auth)) -> JSONResponse:
         "live_url": f"http://{system.advertised_host()}:8888/{camera.slug}/",
     }
     return JSONResponse(payload, status_code=200 if result.ready else 503)
+
+
+@app.post("/api/camera/{serial}/floodlight")
+def camera_floodlight(
+    serial: str,
+    command: FloodlightCommand,
+    _: str = Depends(require_auth),
+) -> dict[str, Any]:
+    camera = store.get(serial)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    if camera.mac not in system.stations():
+        raise HTTPException(
+            status_code=503,
+            detail="The camera is asleep. Wake it or trigger motion, then try again.",
+        )
+    if not system.set_camera_floodlight(
+        camera.serial, command.enabled, command.brightness
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="The camera did not accept the floodlight setting. Wake it and try again.",
+        )
+    return {
+        "enabled": command.enabled,
+        "brightness": command.brightness,
+        "message": f"Floodlight {'on' if command.enabled else 'off'} at {command.brightness}%.",
+    }
 
 
 @app.get("/pair", response_class=HTMLResponse)
@@ -252,12 +298,14 @@ def camera_page(
     camera = store.get(serial)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
+    status_report = system.arlo_status(serial)
     return templates.TemplateResponse(
         request,
         "camera.html",
         {
             "camera": camera,
-            "status": system.arlo_status(serial),
+            "status": status_report,
+            "floodlight": floodlight_view(status_report),
             "host": system.advertised_host(),
             "frigate": frigate_snippet(camera, system.advertised_host()),
         },

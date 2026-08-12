@@ -181,6 +181,25 @@ class SystemReader:
         except (httpx.HTTPError, ValueError, AttributeError):
             return False
 
+    def set_camera_floodlight(
+        self, serial: str, enabled: bool, brightness: int
+    ) -> bool:
+        brightness = max(1, min(100, brightness))
+        self.request_camera_status(serial)
+        try:
+            response = httpx.post(
+                f"{self.config.arlo_api_url}/device/{serial}/registerset",
+                json={
+                    "SpotlightEnabled": enabled,
+                    "SpotlightIntensityManual": brightness * 257,
+                },
+                timeout=6,
+            )
+            response.raise_for_status()
+            return bool(response.json().get("result"))
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return False
+
     def wake_camera(
         self,
         serial: str,

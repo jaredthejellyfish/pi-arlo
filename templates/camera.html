@@ -35,6 +35,30 @@
     </article>
   </section>
 
+  <section class="panel floodlight-panel" data-floodlight-control="{{ camera.serial }}">
+    <div class="floodlight-copy">
+      <span class="icon-tile amber" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v2.5m0 13V21M3 12h2.5m13 0H21M5.6 5.6l1.8 1.8m9.2 9.2 1.8 1.8m0-12.8-1.8 1.8m-9.2 9.2-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+      </span>
+      <div><p class="eyebrow">Lighting</p><h2>Floodlight</h2><p>Turn the camera light on manually and choose its brightness.</p></div>
+    </div>
+    <div class="floodlight-controls">
+      <div class="floodlight-toggle-row">
+        <span><strong>Floodlight</strong><small data-floodlight-state>{{ 'On' if floodlight.enabled else 'Off' }}</small></span>
+        <label class="toggle-switch">
+          <input type="checkbox" data-floodlight-toggle{% if floodlight.enabled %} checked{% endif %}>
+          <span aria-hidden="true"></span>
+          <em class="sr-only">Toggle floodlight</em>
+        </label>
+      </div>
+      <label class="brightness-control">
+        <span><strong>Brightness</strong><output data-floodlight-output>{{ floodlight.brightness }}%</output></span>
+        <input type="range" min="1" max="100" step="1" value="{{ floodlight.brightness }}" data-floodlight-brightness>
+      </label>
+      <p class="control-result" data-floodlight-result role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
   <section class="panel code-panel">
     <div class="panel-heading">
       <div><p class="eyebrow">Frigate helper</p><h2>Add this camera to Frigate</h2><p>Merge this snippet into your existing configuration. Other cameras are left untouched.</p></div>

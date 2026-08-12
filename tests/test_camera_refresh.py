@@ -117,3 +117,74 @@ def test_camera_wake_returns_friendly_failure_instead_of_stream_500(monkeypatch)
 
     assert response.status_code == 503
     assert b"Trigger motion and try again." in response.body
+
+
+def test_floodlight_view_maps_native_intensity_to_percent():
+    view = app_module.floodlight_view(
+        {"SpotlightEnabled": True, "SpotlightIntensityManual": 19275}
+    )
+
+    assert view == {"enabled": True, "brightness": 75}
+
+
+def test_floodlight_view_defaults_to_half_brightness_when_camera_omits_it():
+    view = app_module.floodlight_view({"SpotlightEnabled": False})
+
+    assert view == {"enabled": False, "brightness": 50}
+
+
+def test_floodlight_endpoint_sends_toggle_and_brightness(monkeypatch):
+    item = camera()
+    calls = []
+
+    class Store:
+        def get(self, serial):
+            return item
+
+    class System:
+        def stations(self):
+            return {item.mac: {}}
+
+        def set_camera_floodlight(self, serial, enabled, brightness):
+            calls.append((serial, enabled, brightness))
+            return True
+
+    monkeypatch.setattr(app_module, "store", Store())
+    monkeypatch.setattr(app_module, "system", System())
+
+    payload = app_module.camera_floodlight(
+        item.serial,
+        app_module.FloodlightCommand(enabled=True, brightness=75),
+        "admin",
+    )
+
+    assert calls == [(item.serial, True, 75)]
+    assert payload["enabled"] is True
+    assert payload["brightness"] == 75
+
+
+def test_floodlight_endpoint_does_not_send_to_sleeping_camera(monkeypatch):
+    item = camera()
+
+    class Store:
+        def get(self, serial):
+            return item
+
+    class System:
+        def stations(self):
+            return {}
+
+    monkeypatch.setattr(app_module, "store", Store())
+    monkeypatch.setattr(app_module, "system", System())
+
+    try:
+        app_module.camera_floodlight(
+            item.serial,
+            app_module.FloodlightCommand(enabled=False, brightness=40),
+            "admin",
+        )
+    except app_module.HTTPException as error:
+        assert error.status_code == 503
+        assert "camera is asleep" in error.detail
+    else:
+        raise AssertionError("Sleeping camera should reject floodlight commands")

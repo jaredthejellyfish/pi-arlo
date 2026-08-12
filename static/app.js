@@ -124,6 +124,62 @@ document.querySelectorAll("[data-wake-camera]").forEach((button) => {
   });
 });
 
+const floodlightControl = document.querySelector("[data-floodlight-control]");
+if (floodlightControl) {
+  const serial = floodlightControl.dataset.floodlightControl;
+  const toggle = floodlightControl.querySelector("[data-floodlight-toggle]");
+  const slider = floodlightControl.querySelector("[data-floodlight-brightness]");
+  const output = floodlightControl.querySelector("[data-floodlight-output]");
+  const state = floodlightControl.querySelector("[data-floodlight-state]");
+  const resultBox = floodlightControl.querySelector("[data-floodlight-result]");
+  const storageKey = `arlo-floodlight-brightness:${serial}`;
+  const savedBrightness = Number.parseInt(localStorage.getItem(storageKey), 10);
+  if (Number.isInteger(savedBrightness) && savedBrightness >= 1 && savedBrightness <= 100) {
+    slider.value = String(savedBrightness);
+    output.textContent = `${savedBrightness}%`;
+  }
+  floodlightControl.dataset.confirmedEnabled = String(toggle.checked);
+  floodlightControl.dataset.confirmedBrightness = slider.value;
+
+  async function saveFloodlight() {
+    const brightness = Number.parseInt(slider.value, 10);
+    toggle.disabled = true;
+    slider.disabled = true;
+    resultBox.textContent = "Sending setting…";
+    resultBox.classList.remove("success", "error");
+    try {
+      const url = new URL(`/api/camera/${encodeURIComponent(serial)}/floodlight`, window.location.origin);
+      const payload = await responseJson(await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({enabled: toggle.checked, brightness}),
+      }));
+      localStorage.setItem(storageKey, String(payload.brightness));
+      floodlightControl.dataset.confirmedEnabled = String(payload.enabled);
+      floodlightControl.dataset.confirmedBrightness = String(payload.brightness);
+      state.textContent = payload.enabled ? "On" : "Off";
+      resultBox.textContent = payload.message;
+      resultBox.classList.add("success");
+    } catch (error) {
+      toggle.checked = floodlightControl.dataset.confirmedEnabled === "true";
+      slider.value = floodlightControl.dataset.confirmedBrightness;
+      output.textContent = `${slider.value}%`;
+      state.textContent = toggle.checked ? "On" : "Off";
+      resultBox.textContent = error.message;
+      resultBox.classList.add("error");
+    } finally {
+      toggle.disabled = false;
+      slider.disabled = false;
+    }
+  }
+
+  toggle.addEventListener("change", saveFloodlight);
+  slider.addEventListener("input", () => {
+    output.textContent = `${slider.value}%`;
+  });
+  slider.addEventListener("change", saveFloodlight);
+}
+
 const CAMERA_REFRESH_MS = 7000;
 let cameraRefreshTimer;
 let cameraRefreshInFlight = false;
@@ -194,6 +250,17 @@ function updateCameraDetail(root, camera) {
     fragment.append(row);
   }
   list.replaceChildren(fragment);
+
+  if (floodlightControl && !floodlightControl.querySelector("[data-floodlight-toggle]").disabled) {
+    const spotlight = camera.status?.SpotlightEnabled;
+    if (spotlight !== null && spotlight !== undefined) {
+      const lightToggle = floodlightControl.querySelector("[data-floodlight-toggle]");
+      const lightState = floodlightControl.querySelector("[data-floodlight-state]");
+      lightToggle.checked = Boolean(spotlight);
+      lightState.textContent = spotlight ? "On" : "Off";
+      floodlightControl.dataset.confirmedEnabled = String(Boolean(spotlight));
+    }
+  }
 }
 
 function setRefreshIndicator(state, updatedAt) {
